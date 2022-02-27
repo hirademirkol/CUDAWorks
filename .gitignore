@@ -1,0 +1,5 @@
+# VS Code Directories
+.vscode
+
+# Binaries Folders
+*/bin/
