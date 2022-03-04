@@ -9,6 +9,7 @@
 //Helpers from NVIDIA Samples
 #include "helper_gl.h"
 #include "helper_cuda.h"
+#include "helper_math.h"
 
 int *pArgc;
 char **pArgv;
@@ -17,12 +18,17 @@ GLuint pbo = 0;  // OpenGL pixel buffer object
 GLuint tex = 0;  // OpenGL texture object
 struct cudaGraphicsResource *cuda_pbo_resource; // CUDA Graphics Resource for OpenGL exchange
 
-uint width = 512, height = 512;
+uint width = 800, height = 800;
 dim3 blockSize(16, 16);
 dim3 gridSize;
 
+float3 viewRotation;
+float3 viewTranslation = make_float3(0.0, 0.0, -4.0f);
+float invViewMatrix[12];
+
 extern "C" void render_kernel(dim3 gridSize, dim3 blockSize, uint *d_output,
                               uint imageW, uint imageH);
+extern "C" void copyInvViewMatrix(float *invViewMatrix, size_t sizeOfMatrix);
 
 void initPixelBuffer();
 
@@ -38,7 +44,7 @@ void initGL(int *argc, char **argv)
   glutInit(argc, argv);
   glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
   glutInitWindowSize(width, height);
-  glutCreateWindow("Volume rendering");
+  glutCreateWindow("Volume Rendering");
 
   if (!isGLVersionSupported(2, 0) ||
       !areGLExtensionsSupported("GL_ARB_pixel_buffer_object")) {
@@ -49,6 +55,8 @@ void initGL(int *argc, char **argv)
 
 void render()
 {
+    copyInvViewMatrix(invViewMatrix, sizeof(float4) * 3);
+
     uint *output;
     checkCudaErrors(cudaGraphicsMapResources(1,&cuda_pbo_resource, 0));
     size_t num_bytes;
@@ -65,6 +73,30 @@ void render()
 
 void display()
 {
+    // use OpenGL to build view matrix
+    GLfloat modelView[16];
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    glRotatef(-viewRotation.x, 1.0, 0.0, 0.0);
+    glRotatef(-viewRotation.y, 0.0, 1.0, 0.0);
+    glTranslatef(-viewTranslation.x, -viewTranslation.y, -viewTranslation.z);
+    glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
+    glPopMatrix();
+
+    invViewMatrix[0] = modelView[0];
+    invViewMatrix[1] = modelView[4];
+    invViewMatrix[2] = modelView[8];
+    invViewMatrix[3] = modelView[12];
+    invViewMatrix[4] = modelView[1];
+    invViewMatrix[5] = modelView[5];
+    invViewMatrix[6] = modelView[9];
+    invViewMatrix[7] = modelView[13];
+    invViewMatrix[8] = modelView[2];
+    invViewMatrix[9] = modelView[6];
+    invViewMatrix[10] = modelView[10];
+    invViewMatrix[11] = modelView[14];
+
     render();
     
     glClear(GL_COLOR_BUFFER_BIT);
@@ -87,7 +119,7 @@ void display()
     glVertex2f(1, -1);
     glTexCoord2f(1, 1);
     glVertex2f(1, 1);
-    glTexCoord2f(-1, 1);
+    glTexCoord2f(0, 1);
     glVertex2f(-1, 1);
     glEnd();
 
@@ -98,6 +130,44 @@ void display()
     glutReportErrors();
 }
 
+int ox, oy;
+int buttonState = 0;
+
+void mouse(int button, int state, int x, int y) {
+  if (state == GLUT_DOWN) {
+    buttonState |= 1 << button;
+  } else if (state == GLUT_UP) {
+    buttonState = 0;
+  }
+
+  ox = x;
+  oy = y;
+  glutPostRedisplay();
+}
+
+void motion(int x, int y) {
+  float dx, dy;
+  dx = (float)(x - ox);
+  dy = (float)(y - oy);
+
+  if (buttonState == 4) {
+    // right = zoom
+    viewTranslation.z += dy / 100.0f;
+  } else if (buttonState == 2) {
+    // middle = translate
+    viewTranslation.x += dx / 100.0f;
+    viewTranslation.y -= dy / 100.0f;
+  } else if (buttonState == 1) {
+    // left = rotate
+    viewRotation.x += dy / 5.0f;
+    viewRotation.y += dx / 5.0f;
+  }
+
+  ox = x;
+  oy = y;
+  glutPostRedisplay();
+}
+
 void idle()
 {
     glutPostRedisplay();
@@ -105,11 +175,15 @@ void idle()
 
 void initPixelBuffer()
 {
-    //checkCudaErrors(cudaGraphicsUnregisterResource(cuda_pbo_resource));
-
-    // delete old buffer
-    glDeleteBuffers(1, &pbo);
-    glDeleteTextures(1, &tex);
+    if (pbo)
+    {
+        // unregister this buffer object from CUDA C
+        checkCudaErrors(cudaGraphicsUnregisterResource(cuda_pbo_resource));
+        
+        // delete old buffer
+        glDeleteBuffers(1, &pbo);
+        glDeleteTextures(1, &tex);
+    }
 
     // create pixel buffer object for display
     glGenBuffers(1, &pbo);
@@ -136,12 +210,12 @@ void close()
 {
     //freeCudaBuffers();
     
-    cudaGraphicsUnregisterResource(cuda_pbo_resource);
-    glDeleteBuffers(1, &pbo);
-    glDeleteTextures(1, &tex);
-
-    glDeleteBuffers(1, &pbo);
-    glDeleteTextures(1, &tex);
+    if (pbo)
+    {
+        cudaGraphicsUnregisterResource(cuda_pbo_resource);
+        glDeleteBuffers(1, &pbo);
+        glDeleteTextures(1, &tex);
+    }
 }
 
 //Program Main
@@ -164,8 +238,8 @@ int main(int argc, char **argv)
     
     glutDisplayFunc(display);
     //glutKeyboardFunc(keyboard);
-    //glutMouseFunc(mouse);
-    //glutMotionFunc(motion);
+    glutMouseFunc(mouse);
+    glutMotionFunc(motion);
     //glutReshapeFunc(reshape);
     glutIdleFunc(idle);
 
