@@ -1,13 +1,15 @@
 #include "helper_math.h"
 #include "helper_cuda.h"
-__device__ uint rgbaFloatToInt(float4 rgba) {
-    rgba.x = __saturatef(rgba.x);  // clamp to [0.0, 1.0]
-    rgba.y = __saturatef(rgba.y);
-    rgba.z = __saturatef(rgba.z);
-    rgba.w = __saturatef(rgba.w);
-    return (uint(rgba.w * 255) << 24) | (uint(rgba.z * 255) << 16) |
-           (uint(rgba.y * 255) << 8) | uint(rgba.x * 255);
-}
+
+#ifndef NV_PI
+#define NV_PI   float(3.1415926535897932384626433832795)
+#endif
+
+cudaArray *volumeArray = 0;
+
+typedef unsigned char VolumeType;
+
+cudaTextureObject_t texObject;    // For 3D texture
 
 typedef struct { float4 m[3]; } float3x4;
 
@@ -64,6 +66,15 @@ __device__ float4 mul(const float3x4 &M, const float4 &v)
     return r;
 }
 
+__device__ uint rgbaFloatToInt(float4 rgba) {
+    rgba.x = __saturatef(rgba.x);  // clamp to [0.0, 1.0]
+    rgba.y = __saturatef(rgba.y);
+    rgba.z = __saturatef(rgba.z);
+    rgba.w = __saturatef(rgba.w);
+    return (uint(rgba.w * 255) << 24) | (uint(rgba.z * 255) << 16) |
+           (uint(rgba.y * 255) << 8) | uint(rgba.x * 255);
+}
+
 __device__ float3 clampToMax(float3 in)
 {
     float3 out;
@@ -76,8 +87,22 @@ __device__ float3 clampToMax(float3 in)
     return out;
 }
 
-__global__ void render(uint *out, uint imageW, uint imageH)
+__device__ float getScatteredLight(float3 d)
 {
+    float3 light = make_float3(-1.0f, 1.0f, -1.0f);
+    float g = 0.7f;
+    float cosAngle = dot(light, d)/length(light)/length(d);
+    float c = 0.25/ NV_PI;
+
+    return c * (1 - g*g)/(1 + g*g -2*g*cosAngle);
+}
+
+__global__ void render(uint *out, uint imageW, uint imageH, cudaTextureObject_t tex)
+{
+
+    const int maxSteps = 500;
+    const float tStep = 0.05f;
+
     const float3 boxMin = make_float3(-1.0f);
     const float3 boxMax = make_float3(1.0f);
 
@@ -98,26 +123,84 @@ __global__ void render(uint *out, uint imageW, uint imageH)
 
     if(!hit) return;
 
-    float3 frontPos = eye.o + eye.d * tNear;
-    float3 backPos = eye.o + eye.d * tFar;
-    float length = tFar - tNear;
+    if (tNear < 0.0f) tNear = 0.0f;  // clamp to near plane
 
+    //float3 frontPos = eye.o + eye.d * tNear;
+    float3 pos = eye.o + eye.d * tFar;
+    float3 step = -eye.d * tStep;
 
-    float3 frontColor = clampToMax(fabs(frontPos));
-    float3 backColor = clampToMax(fabs(backPos));
-    float4 col = make_float4(frontColor);
-    if (length < 2.0f)
+    float4 sum = make_float4(0.0f);
+    float t = tFar;
+
+    for (int i = 0; i < maxSteps; i++)
     {
-        float a = length/2.0f;
-        col = make_float4(a*frontColor + (1-a)*backColor);
+        float density = tex3D<float>(tex, pos.x * 0.5f + 0.5f, pos.y * 0.5f + 0.5f,
+                                     pos.z * 0.5f + 0.5f);
+        
+        
+        float4 col = make_float4(getScatteredLight(-eye.d));
+        col *= density;
+
+        sum += col * (1 - sum.w);
+
+        t -= tStep;
+        if (t < tNear)
+            break;
+        
+        pos += step;
     }
 
-    out[y * imageW + x] = rgbaFloatToInt(col);
+    out[y * imageW + x] = rgbaFloatToInt(sum);
+}
+
+extern "C" void initCuda(void *volume, cudaExtent volumeSize)
+{
+    // Create 3D array
+    cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<VolumeType>();
+    checkCudaErrors(cudaMalloc3DArray(&volumeArray, &channelDesc, volumeSize));
+
+    // Copy data to 3D array
+    cudaMemcpy3DParms copyParams = {0};
+    copyParams.srcPtr =
+        make_cudaPitchedPtr(volume, volumeSize.width * sizeof(VolumeType),
+                            volumeSize.width, volumeSize.height);
+    copyParams.dstArray = volumeArray;
+    copyParams.extent = volumeSize;
+    copyParams.kind = cudaMemcpyHostToDevice;
+    checkCudaErrors(cudaMemcpy3D(&copyParams));
+
+    cudaResourceDesc texRes;
+    memset(&texRes, 0, sizeof(cudaResourceDesc));
+
+    texRes.resType = cudaResourceTypeArray;
+    texRes.res.array.array = volumeArray;
+
+    cudaTextureDesc texDescr;
+    memset(&texDescr, 0, sizeof(cudaTextureDesc));
+
+    texDescr.normalizedCoords =
+        true;  // access with normalized texture coordinates
+    texDescr.filterMode = cudaFilterModeLinear;  // linear interpolation
+
+    texDescr.addressMode[0] = cudaAddressModeClamp;  // clamp texture coordinates
+    texDescr.addressMode[1] = cudaAddressModeClamp;
+    texDescr.addressMode[2] = cudaAddressModeClamp;
+
+    texDescr.readMode = cudaReadModeNormalizedFloat;
+
+    checkCudaErrors(
+        cudaCreateTextureObject(&texObject, &texRes, &texDescr, NULL));
+}
+
+extern "C" void freeCudaBuffers()
+{
+    checkCudaErrors(cudaDestroyTextureObject(texObject));
+    checkCudaErrors(cudaFreeArray(volumeArray));
 }
 
 extern "C" void render_kernel(dim3 gridSize, dim3 blockSize, uint* output, uint imageW, uint imageH)
 {
-    render<<<gridSize,blockSize>>>(output, imageW, imageH);
+    render<<<gridSize,blockSize>>>(output, imageW, imageH, texObject);
 }
 
 extern "C" void copyInvViewMatrix(float *invViewMatrix, size_t sizeOfMatrix)

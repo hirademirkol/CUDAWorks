@@ -18,6 +18,9 @@ GLuint pbo = 0;  // OpenGL pixel buffer object
 GLuint tex = 0;  // OpenGL texture object
 struct cudaGraphicsResource *cuda_pbo_resource; // CUDA Graphics Resource for OpenGL exchange
 
+cudaExtent volumeSize = make_cudaExtent(32, 32, 32);
+typedef unsigned char VolumeType;
+
 uint width = 800, height = 800;
 dim3 blockSize(16, 16);
 dim3 gridSize;
@@ -26,6 +29,8 @@ float3 viewRotation;
 float3 viewTranslation = make_float3(0.0, 0.0, -4.0f);
 float invViewMatrix[12];
 
+extern "C" void initCuda(void *volume, cudaExtent volumeSize);
+extern "C" void freeCudaBuffers();
 extern "C" void render_kernel(dim3 gridSize, dim3 blockSize, uint *d_output,
                               uint imageW, uint imageH);
 extern "C" void copyInvViewMatrix(float *invViewMatrix, size_t sizeOfMatrix);
@@ -112,7 +117,6 @@ void display()
     // draw textured quad
     glEnable(GL_TEXTURE_2D);
     glBegin(GL_QUADS);
-    //glColor3s(128,12,255);
     glTexCoord2f(0, 0);
     glVertex2f(-1, -1);
     glTexCoord2f(1, 0);
@@ -208,7 +212,7 @@ void initPixelBuffer()
 
 void close()
 {
-    //freeCudaBuffers();
+    freeCudaBuffers();
     
     if (pbo)
     {
@@ -216,6 +220,27 @@ void close()
         glDeleteBuffers(1, &pbo);
         glDeleteTextures(1, &tex);
     }
+}
+
+void *loadRawFile(char *filename, size_t size) {
+  FILE *fp = fopen(filename, "rb");
+
+  if (!fp) {
+    fprintf(stderr, "Error opening file '%s'\n", filename);
+    return 0;
+  }
+
+  void *data = malloc(size);
+  size_t read = fread(data, 1, size, fp);
+  fclose(fp);
+
+#if defined(_MSC_VER_)
+  printf("Read '%s', %Iu bytes\n", filename, read);
+#else
+  printf("Read '%s', %zu bytes\n", filename, read);
+#endif
+
+  return data;
 }
 
 //Program Main
@@ -229,9 +254,12 @@ int main(int argc, char **argv)
     initGL(&argc, argv);
     findCudaDevice(argc, (const char**)argv);
 
-    //int cubeSide = 32;
-    //size_t size = cubeSide * cubeSide * cubeSide;
-    //void *volume = malloc(size);
+    int cubeSide = 32;
+    size_t size = cubeSide * cubeSide * cubeSide * sizeof(VolumeType);
+    void *volume = loadRawFile((char*)"./data/Bucky.raw", size);
+
+    initCuda(volume, volumeSize);
+    free(volume);
 
     // calculate new grid size
     gridSize = dim3(iDivUp(width, blockSize.x), iDivUp(height, blockSize.y));
