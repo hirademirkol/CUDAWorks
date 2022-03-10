@@ -20,8 +20,15 @@ volRender_kernel.o:volRender_kernel.cu
 dir:
 	mkdir -p bin
 
+volume:
+	g++ volumePrep.cpp -o bin/volumePrep
+	bin/volumePrep
+
 run: build
 	./bin/volRender
+
+run_custom: build volume
+	./bin/volRender --volume data/custom.raw
 
 clean:
 	rm -f ./bin/volRender

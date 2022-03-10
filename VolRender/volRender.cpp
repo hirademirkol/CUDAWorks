@@ -13,6 +13,7 @@
 
 int *pArgc;
 char **pArgv;
+char* volumeFilename = (char*)"data/Bucky.raw";
 
 GLuint pbo = 0;  // OpenGL pixel buffer object
 GLuint tex = 0;  // OpenGL texture object
@@ -254,10 +255,17 @@ int main(int argc, char **argv)
     initGL(&argc, argv);
     findCudaDevice(argc, (const char**)argv);
 
+    char *filename;
+    if (getCmdLineArgumentString(argc, (const char **)argv, "volume",
+                                &filename)) 
+    {
+      volumeFilename = filename;
+    }
+
     int cubeSide = 32;
     size_t size = cubeSide * cubeSide * cubeSide * sizeof(VolumeType);
-    void *volume = loadRawFile((char*)"./data/Bucky.raw", size);
-
+    void *volume = loadRawFile(volumeFilename, size);
+    
     initCuda(volume, volumeSize);
     free(volume);
 

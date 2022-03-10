@@ -15,6 +15,8 @@ typedef struct { float4 m[3]; } float3x4;
 
 __constant__ float3x4 c_invViewMatrix;  // inverse view matrix
 
+__device__ float3 light;
+
 struct Ray {
   float3 o;  // origin
   float3 d;  // direction
@@ -87,19 +89,17 @@ __device__ float3 clampToMax(float3 in)
     return out;
 }
 
-__device__ float getScatteredLight(float3 d)
+__device__ float getScatteredLight(float3 d, float3 light)
 {
-    float3 light = make_float3(-1.0f, 1.0f, -1.0f);
     float g = 0.7f;
     float cosAngle = dot(light, d)/length(light)/length(d);
-    float c = 0.25/ NV_PI;
+    float c = 0.25f/ NV_PI;
 
     return c * (1 - g*g)/(1 + g*g -2*g*cosAngle);
 }
 
 __global__ void render(uint *out, uint imageW, uint imageH, cudaTextureObject_t tex)
 {
-
     const int maxSteps = 500;
     const float tStep = 0.05f;
 
@@ -112,17 +112,27 @@ __global__ void render(uint *out, uint imageW, uint imageH, cudaTextureObject_t 
     float u = (x / (float)imageW) * 2.0f - 1.0f;
     float v = (y / (float)imageH) * 2.0f - 1.0f;
 
+    light = make_float3(-1.0f, 1.0f, -1.0f);
+
     Ray eye;
     eye.o = make_float3(mul(c_invViewMatrix, make_float4(0.0f, 0.0f, 0.0f, 1.0f)));
     eye.d = normalize(make_float3(u, v, -2.0f));
     eye.d = mul(c_invViewMatrix, eye.d);
 
+    // A sky rendering with sun as smooth gradient
+    float colorStep = smoothstep(0.95f, 0.99f, dot(light, -eye.d)/length(light)/length(eye.d));
+    const float4 background = make_float4(colorStep, 0.6+colorStep*0.4f, 1.0f, 1.0f);
+
     float tNear, tFar;
 
     int hit = intersectBox(eye, boxMin, boxMax, &tNear, &tFar);
 
-    if(!hit) return;
-
+    if(!hit) 
+    {
+        out[y * imageW + x] = rgbaFloatToInt(background);
+        return;
+    }
+    
     if (tNear < 0.0f) tNear = 0.0f;  // clamp to near plane
 
     //float3 frontPos = eye.o + eye.d * tNear;
@@ -138,7 +148,7 @@ __global__ void render(uint *out, uint imageW, uint imageH, cudaTextureObject_t 
                                      pos.z * 0.5f + 0.5f);
         
         
-        float4 col = make_float4(getScatteredLight(-eye.d));
+        float4 col = make_float4(getScatteredLight(-eye.d, light));
         col *= density;
 
         sum += col * (1 - sum.w);
@@ -150,7 +160,7 @@ __global__ void render(uint *out, uint imageW, uint imageH, cudaTextureObject_t 
         pos += step;
     }
 
-    out[y * imageW + x] = rgbaFloatToInt(sum);
+    out[y * imageW + x] = rgbaFloatToInt(background + sum);
 }
 
 extern "C" void initCuda(void *volume, cudaExtent volumeSize)
