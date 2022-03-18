@@ -21,7 +21,7 @@ dir:
 	mkdir -p bin
 
 volume:
-	g++ volumePrep.cpp -o bin/volumePrep
+	g++ -g volumePrep.cpp -o bin/volumePrep
 	bin/volumePrep
 
 run: build
