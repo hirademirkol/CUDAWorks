@@ -2,14 +2,13 @@
 #define __BOIDSYSTEM_H__
 
 typedef unsigned int uint;
+enum DataArray { POSITION, VELOCITY, };
 
 class BoidSystem
 {
     public:
         BoidSystem(uint numBoids);
         ~BoidSystem();
-
-        enum DataArray { POSITION, VELOCITY, };
 
         void reset();
 

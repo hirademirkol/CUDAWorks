@@ -8,32 +8,34 @@ class BoidRenderer
         ~BoidRenderer();
 
         void setPositions(float *pos, int numBoids);
-        void setVertexBuffer(unsigned int vbo, int numBoids);
+        void setPointBuffer(unsigned int vbo, int numBoids);
         void setColorBuffer(unsigned int vbo) { m_colorVBO = vbo; }
 
-        void setFOV(float fov) { m_fov = fov; }
-        void setWindowSize(int w, int h)
-        {
-            m_window_w = w;
-            m_window_h = h;
-        }
+        void setProjection(float *projectionMat) { m_projectionMatrix = projectionMat; }
+        void setModelView(float* modelViewMatrix) {m_modelviewMatrix = modelViewMatrix; }
 
         void display();
 
     protected:  //methods
-        void _drawPoints();
+        void _initGL();
+        void _drawBoids();
+        GLuint _compileProgram(const char *vSource, const char *fSource);
 
     protected:  //data
         float *m_pos;
         int m_numBoids;
+
+        float m_boidScale;
         
-        float m_pointSize;
-        
-        float m_fov;
-        int m_window_w, m_window_h;
-        
+        float *m_projectionMatrix;
+        float *m_modelviewMatrix;
+
+        GLuint m_program;
+
         GLuint m_posVBO;
         GLuint m_colorVBO;
+
+        GLuint m_meshVAO;
 };
 
 #endif  //__RENDERER__
