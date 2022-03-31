@@ -24,7 +24,6 @@ void initBoidSystem(int numBoids)
     bsystem->reset();
 
     boidRenderer = new BoidRenderer;
-    boidRenderer->setColorBuffer(bsystem->getColorBuffer());
 }
 
 void initGL(int *argc, char **argv)
@@ -50,8 +49,10 @@ void initGL(int *argc, char **argv)
 void display()
 {
     if(boidRenderer)
-        boidRenderer->setPointBuffer(bsystem->getCurrentPositionBuffer(),
-                                    bsystem->getNumBoids());
+        boidRenderer->setBuffers(bsystem->getCurrentPositionBuffer(),
+                                     bsystem->getCurrentVelocityBuffer(),
+                                     bsystem->getCurrentUpVectorBuffer(),
+                                     bsystem->getNumBoids());
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

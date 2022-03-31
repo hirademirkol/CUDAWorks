@@ -8,8 +8,7 @@ class BoidRenderer
         ~BoidRenderer();
 
         void setPositions(float *pos, int numBoids);
-        void setPointBuffer(unsigned int vbo, int numBoids);
-        void setColorBuffer(unsigned int vbo) { m_colorVBO = vbo; }
+        void setBuffers(unsigned int posVBO, unsigned int velVBO, unsigned int upVBO, int numBoids);
 
         void setProjection(float *projectionMat) { m_projectionMatrix = projectionMat; }
         void setModelView(float* modelViewMatrix) {m_modelviewMatrix = modelViewMatrix; }
@@ -33,7 +32,8 @@ class BoidRenderer
         GLuint m_program;
 
         GLuint m_posVBO;
-        GLuint m_colorVBO;
+        GLuint m_velVBO;
+        GLuint m_upVBO;
 
         GLuint m_meshVAO;
 };

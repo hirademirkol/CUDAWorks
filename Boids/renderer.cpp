@@ -26,7 +26,8 @@ BoidRenderer::BoidRenderer()
             m_boidScale(0.05),
             m_program(0),
             m_posVBO(0),
-            m_colorVBO(0),
+            m_velVBO(0),
+            m_upVBO(0),
             m_meshVAO(0)
             {
                 _initGL();
@@ -36,19 +37,16 @@ BoidRenderer::~BoidRenderer()
 {
     m_pos = 0;
     glDeleteBuffers(1, (const GLuint *)&m_posVBO);
-    glDeleteBuffers(1, (const GLuint *)&m_colorVBO);
+    glDeleteBuffers(1, (const GLuint *)&m_velVBO);
+    glDeleteBuffers(1, (const GLuint *)&m_upVBO);
     glDeleteBuffers(1, (const GLuint *)&m_meshVAO);
 }
 
-void BoidRenderer::setPositions(float *pos, int numBoids)
+void BoidRenderer::setBuffers(unsigned int posVBO, unsigned int velVBO, unsigned int upVBO, int numBoids)
 {
-    m_pos = pos;
-    m_numBoids = numBoids;
-}
-
-void BoidRenderer::setPointBuffer(unsigned int vbo, int numBoids)
-{
-    m_posVBO = vbo;
+    m_posVBO = posVBO;
+    m_velVBO = velVBO;
+    m_upVBO = upVBO;
     m_numBoids = numBoids;
 }
 
@@ -68,7 +66,6 @@ void BoidRenderer::display()
     _drawBoids();
 
     glUseProgram(0);
-    //glDisable(GL_POINT_SPRITE_ARB);
 }
 
 void BoidRenderer::_initGL()
@@ -92,31 +89,27 @@ void BoidRenderer::_initGL()
 
 void BoidRenderer::_drawBoids()
 {
-    if(!m_posVBO)
-    {
-        glBegin(GL_POINTS);
-        {
-            int k = 0;
+    glBindVertexArray(m_meshVAO);
 
-            for(int i = 0; i < m_numBoids; ++i)
-            {
-                glVertex3fv(&m_pos[k]);
-                k +=4;
-            }
-        }
-        glEnd();
-    } else
-    {
-        glBindVertexArray(m_meshVAO);
         glBindBuffer(GL_ARRAY_BUFFER, m_posVBO);
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GL_FLOAT), 0);
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4*sizeof(GL_FLOAT), 0);
         glVertexAttribDivisor(1,1);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glDrawArraysInstanced(GL_TRIANGLES, 0, 3, m_numBoids);
 
-        glBindVertexArray(0);
-    }
+        glBindBuffer(GL_ARRAY_BUFFER, m_velVBO);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 4*sizeof(GL_FLOAT), 0);
+        glVertexAttribDivisor(2,1);
+
+        glBindBuffer(GL_ARRAY_BUFFER, m_upVBO);
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4*sizeof(GL_FLOAT), 0);
+        glVertexAttribDivisor(3,1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, 3, m_numBoids);
+
+    glBindVertexArray(0);
 }
 
 GLuint BoidRenderer::_compileProgram(const char *vSource, const char *fSource)

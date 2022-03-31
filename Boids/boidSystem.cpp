@@ -15,7 +15,8 @@ BoidSystem::BoidSystem(uint numBoids)
         :   m_bInitialized(false),
             m_numBoids(numBoids),
             m_hPos(0),
-            m_hVel(0)
+            m_hVel(0),
+            m_hUp(0)
             {
                 _initialize();
             }
@@ -45,30 +46,17 @@ void BoidSystem::_initialize()
     // Allocate host data
     m_hPos = new float[m_numBoids * 4];
     m_hVel = new float[m_numBoids * 4];
+    m_hUp = new float[m_numBoids * 4];
     
     memset(m_hPos, 0, memSize);
     memset(m_hVel, 0, memSize);
+    memset(m_hUp, 0, memSize);
 
     m_posVBO = createVBO(memSize);
-    m_colorVBO = createVBO(memSize);
+    m_velVBO = createVBO(memSize);
+    m_upVBO = createVBO(memSize);
 
-    // Fill color buffer
-    glBindBuffer(GL_ARRAY_BUFFER, m_colorVBO);
-    float *data = (float *) glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-    float *ptr = data;
-
-    for(uint i = 0; i < m_numBoids; i++)
-    {
-        *ptr++ = frand();
-        *ptr++ = frand();
-        *ptr++ = frand();
-        *ptr++ = 1.0f;
-    }
-
-    glUnmapBuffer(GL_ARRAY_BUFFER);
-
-    m_bInitialized = true;
-    
+    m_bInitialized = true;    
 }
 
 void BoidSystem::_finalize()
@@ -77,9 +65,11 @@ void BoidSystem::_finalize()
 
     delete[] m_hPos;
     delete[] m_hVel;
+    delete[] m_hUp;
 
     glDeleteBuffers(1, (const GLuint *)&m_posVBO);
-    glDeleteBuffers(1, (const GLuint *)&m_colorVBO);
+    glDeleteBuffers(1, (const GLuint *)&m_velVBO);
+    glDeleteBuffers(1, (const GLuint *)&m_upVBO);
 }
 
 float *BoidSystem::getArray(DataArray array)
@@ -96,6 +86,9 @@ float *BoidSystem::getArray(DataArray array)
     case VELOCITY:
         hdata = m_hVel;
         break;
+    case UPVECTOR:
+        hdata = m_hUp;
+        break;
     default:
         break;
     }
@@ -111,36 +104,55 @@ void BoidSystem::setArray(DataArray array, const float *data, int start, int cou
     {
     case POSITION:
         glBindBuffer(GL_ARRAY_BUFFER, m_posVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, start*4*sizeof(float), count*4*sizeof(float), data);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
         break;
     case VELOCITY:
+        glBindBuffer(GL_ARRAY_BUFFER, m_velVBO);
+        break;
+    case UPVECTOR:
+        glBindBuffer(GL_ARRAY_BUFFER, m_upVBO);
         break;
     default:
         break;
     }
+
+    glBufferSubData(GL_ARRAY_BUFFER, start*4*sizeof(float), count*4*sizeof(float), data);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void BoidSystem::reset()
 {
-    int p = 0, v = 0;
+    int p = 0, v = 0, u = 0;
 
     for (uint i = 0; i < m_numBoids; i++)
     {
-        float point[3];
-        point[0] = frand();
-        point[1] = frand();
-        point[2] = frand();
-        m_hPos[p++] = 2 * (point[0] - 0.5f);
-        m_hPos[p++] = 2 * (point[1] - 0.5f);
-        m_hPos[p++] = 2 * (point[2] - 0.5f);
+        float pos[3];
+        float vel[3];
+        
+        pos[0] = frand();
+        pos[1] = frand();
+        pos[2] = frand();
+        
+        vel[0] = frand();
+        vel[1] = frand();
+        vel[2] = frand();
+
+        m_hPos[p++] = 2 * (pos[0] - 0.5f);
+        m_hPos[p++] = 2 * (pos[1] - 0.5f);
+        m_hPos[p++] = 2 * (pos[2] - 0.5f);
         m_hPos[p++] = 1.0f;
-        m_hVel[v++] = 0.0f;
-        m_hVel[v++] = 0.0f;
-        m_hVel[v++] = 0.0f;
-        m_hVel[v++] = 0.0f;
+
+        m_hVel[v++] = 2 * (vel[0] - 0.5f);
+        m_hVel[v++] = 2 * (vel[1] - 0.5f);
+        m_hVel[v++] = 2 * (vel[2] - 0.5f);
+        m_hVel[v++] = 1.0f;
+
+        m_hUp[u++] = 0.0f;
+        m_hUp[u++] = 1.0f;
+        m_hUp[u++] = 0.0f;
+        m_hUp[u++] = 0.0f;
     }
 
     setArray(POSITION, m_hPos, 0, m_numBoids);
     setArray(VELOCITY, m_hVel, 0,  m_numBoids);
+    setArray(UPVECTOR, m_hUp, 0, m_numBoids);
 }

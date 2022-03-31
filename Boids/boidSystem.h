@@ -2,7 +2,7 @@
 #define __BOIDSYSTEM_H__
 
 typedef unsigned int uint;
-enum DataArray { POSITION, VELOCITY, };
+enum DataArray { POSITION, VELOCITY, UPVECTOR, };
 
 class BoidSystem
 {
@@ -18,7 +18,8 @@ class BoidSystem
         int getNumBoids() const { return m_numBoids; }
 
         uint getCurrentPositionBuffer() const { return m_posVBO; }
-        uint getColorBuffer() const { return m_colorVBO; }
+        uint getCurrentVelocityBuffer() const { return m_velVBO; }
+        uint getCurrentUpVectorBuffer() const { return m_upVBO; }
 
     protected:  // methods
         uint createVBO(uint size);
@@ -33,9 +34,11 @@ class BoidSystem
         // CPU data
         float *m_hPos;
         float *m_hVel;
+        float *m_hUp;
 
         uint m_posVBO;
-        uint m_colorVBO;
+        uint m_velVBO;
+        uint m_upVBO;
 
 };
 
