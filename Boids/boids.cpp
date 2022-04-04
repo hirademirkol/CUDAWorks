@@ -1,17 +1,28 @@
 #include <stdlib.h>
+#include <algorithm>
 
 #include <GL/freeglut.h>
 
+#include <math.h>
 #include <helper_gl.h>
 
 #include "renderer.h"
 #include "boidSystem.h"
 
-#define NUM_BOIDS 100
+#define NUM_BOIDS 1000
 
 const uint width = 800, height = 600;
 
+// view params
+int ox, oy;
+int buttonState = 0;
+
 float camera_trans[] = {0, 0, -4};
+float camera_rot[] = {0, 0, 0};
+float camera_trans_lag[] = {0, 0, -4};
+float camera_rot_lag[] = {0, 0, 0};
+const float inertia = 0.1f;
+
 float modelView[16];
 float projection[16];
 
@@ -65,9 +76,16 @@ void display()
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
-    glTranslatef(camera_trans[0], camera_trans[1], camera_trans[2]);
-    glRotatef(30, 0, 1, 0);
-    glRotatef(25, 1, 0, 1);
+    for (int c = 0; c < 3; c++)
+    {
+        camera_trans_lag[c] += (camera_trans[c] - camera_trans_lag[c]) * inertia;
+        camera_rot_lag[c] += (camera_rot[c] - camera_rot_lag[c]) * inertia;
+
+    }
+
+    glTranslatef(camera_trans_lag[0], camera_trans_lag[1], camera_trans_lag[2]);
+    glRotatef(camera_rot_lag[0], 1, 0, 0);
+    glRotatef(camera_rot_lag[1], 0, 1, 0);
 
     glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
 
@@ -104,6 +122,50 @@ void reshape(int w, int h)
     }
 }
 
+void mouse(int button, int state, int x, int y)
+{
+    if (state == GLUT_DOWN) {
+        if(button == 3 || button == 4 )
+        {
+            int dir = 7 - 2*button;
+            camera_trans[2] += dir * 0.05f * fabs(camera_trans[2]);
+        }
+        else
+            buttonState = button + 1;
+    } else if (state == GLUT_UP) {
+        buttonState = 0;
+    }
+
+    ox = x;
+    oy = y;
+    
+    glutPostRedisplay();
+}
+
+void motion(int x, int y)
+{
+    float dx, dy;
+    dx = (float)(x - ox);
+    dy = (float)(y - oy);
+
+
+    if(buttonState == 1)// Mouse 1: Rotate
+    {
+        camera_rot[0] += dy / 5.0f;
+        camera_rot[1] += dx / 5.0f;
+    }
+    else if(buttonState == 2)// Mouse 2: Pan
+    {
+        camera_trans[0] += dx / 100.0f;
+        camera_trans[1] -= dy / 100.0f;
+    }
+
+    ox = x;
+    oy = y;
+
+    glutPostRedisplay();
+}
+
 void idle()
 {
     glutPostRedisplay();
@@ -126,6 +188,8 @@ int main(int argc, char **argv)
 
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
+    glutMouseFunc(mouse);
+    glutMotionFunc(motion);
     glutIdleFunc(idle);
 
     glutCloseFunc(close);

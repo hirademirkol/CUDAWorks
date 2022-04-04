@@ -23,7 +23,7 @@ float triangleVertices[] =
 BoidRenderer::BoidRenderer()
         :   m_pos(0),
             m_numBoids(0),
-            m_boidScale(0.05),
+            m_boidScale(0.02),
             m_program(0),
             m_posVBO(0),
             m_velVBO(0),
