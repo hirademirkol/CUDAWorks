@@ -10,6 +10,7 @@ class BoidSystem
         BoidSystem(uint numBoids);
         ~BoidSystem();
 
+        void update(float deltaTime);
         void reset();
 
         float *getArray(DataArray array);
@@ -40,6 +41,9 @@ class BoidSystem
         uint m_velVBO;
         uint m_upVBO;
 
+        struct cudaGraphicsResource *m_cuda_posvbo_resource;
+        struct cudaGraphicsResource *m_cuda_velvbo_resource;
+        struct cudaGraphicsResource *m_cuda_upvbo_resource;
 };
 
 #endif  //__BOIDSYSTEM_H__

@@ -15,8 +15,12 @@ float camera_trans[] = {0, 0, -4};
 float modelView[16];
 float projection[16];
 
+float timestep = 0.01f;
+
 BoidRenderer *boidRenderer = 0;
 BoidSystem *bsystem = 0;
+
+extern "C" void cudaInit(int argc, char **argv);
 
 void initBoidSystem(int numBoids)
 {
@@ -48,6 +52,8 @@ void initGL(int *argc, char **argv)
 
 void display()
 {
+    bsystem->update(timestep);
+
     if(boidRenderer)
         boidRenderer->setBuffers(bsystem->getCurrentPositionBuffer(),
                                      bsystem->getCurrentVelocityBuffer(),
@@ -114,6 +120,8 @@ int main(int argc, char **argv)
     setenv("DIDSPLAY", ":0", 0);
 
     initGL(&argc, argv);
+    cudaInit(argc, argv);
+    
     initBoidSystem(NUM_BOIDS);
 
     glutDisplayFunc(display);

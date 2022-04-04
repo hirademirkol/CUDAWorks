@@ -5,6 +5,7 @@
 #include <memory.h>
 
 #include "boidSystem.h"
+#include "boidSystem.cuh"
 
 inline float frand()
 {
@@ -56,6 +57,10 @@ void BoidSystem::_initialize()
     m_velVBO = createVBO(memSize);
     m_upVBO = createVBO(memSize);
 
+    registerGLBufferObject(m_posVBO, &m_cuda_posvbo_resource);
+    registerGLBufferObject(m_velVBO, &m_cuda_velvbo_resource);
+    registerGLBufferObject(m_upVBO, &m_cuda_upvbo_resource);
+
     m_bInitialized = true;    
 }
 
@@ -67,34 +72,16 @@ void BoidSystem::_finalize()
     delete[] m_hVel;
     delete[] m_hUp;
 
+    unregisterGLBufferObject(m_cuda_posvbo_resource);
+    unregisterGLBufferObject(m_cuda_velvbo_resource);
+    unregisterGLBufferObject(m_cuda_upvbo_resource);
+    
     glDeleteBuffers(1, (const GLuint *)&m_posVBO);
     glDeleteBuffers(1, (const GLuint *)&m_velVBO);
     glDeleteBuffers(1, (const GLuint *)&m_upVBO);
 }
 
-float *BoidSystem::getArray(DataArray array)
-{
-    assert(m_bInitialized);
 
-    float *hdata = 0;
-
-    switch (array)
-    {
-    case POSITION:
-        hdata = m_hPos;
-        break;
-    case VELOCITY:
-        hdata = m_hVel;
-        break;
-    case UPVECTOR:
-        hdata = m_hUp;
-        break;
-    default:
-        break;
-    }
-
-    return hdata;
-}
 
 void BoidSystem::setArray(DataArray array, const float *data, int start, int count)
 {
@@ -103,12 +90,15 @@ void BoidSystem::setArray(DataArray array, const float *data, int start, int cou
     switch (array)
     {
     case POSITION:
+        unregisterGLBufferObject(m_cuda_posvbo_resource);
         glBindBuffer(GL_ARRAY_BUFFER, m_posVBO);
         break;
     case VELOCITY:
+        unregisterGLBufferObject(m_cuda_velvbo_resource);
         glBindBuffer(GL_ARRAY_BUFFER, m_velVBO);
         break;
     case UPVECTOR:
+        unregisterGLBufferObject(m_cuda_upvbo_resource);
         glBindBuffer(GL_ARRAY_BUFFER, m_upVBO);
         break;
     default:
@@ -117,6 +107,40 @@ void BoidSystem::setArray(DataArray array, const float *data, int start, int cou
 
     glBufferSubData(GL_ARRAY_BUFFER, start*4*sizeof(float), count*4*sizeof(float), data);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    switch (array)
+    {
+    case POSITION:
+        registerGLBufferObject(m_posVBO, &m_cuda_posvbo_resource);
+        break;
+    case VELOCITY:
+        registerGLBufferObject(m_velVBO, &m_cuda_velvbo_resource);
+        break;
+    case UPVECTOR:
+        registerGLBufferObject(m_upVBO, &m_cuda_upvbo_resource);
+        break;
+    default:
+        break;
+    }
+}
+
+void BoidSystem::update(float deltaTime)
+{
+    assert(m_bInitialized);
+
+    float *dPos;
+    float *dVel;
+    float *dUp;
+
+    dPos = (float*) mapGLBufferObject(&m_cuda_posvbo_resource);
+    dVel = (float*) mapGLBufferObject(&m_cuda_velvbo_resource);
+    dUp = (float*) mapGLBufferObject(&m_cuda_upvbo_resource);
+
+    integrateSystem(dPos, dVel, dUp, deltaTime, m_numBoids);
+
+    unmapGLBufferObject(m_cuda_posvbo_resource);
+    unmapGLBufferObject(m_cuda_velvbo_resource);
+    unmapGLBufferObject(m_cuda_upvbo_resource);
 }
 
 void BoidSystem::reset()

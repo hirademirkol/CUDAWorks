@@ -13,8 +13,8 @@ out vec4 vColor;
 void main()
 {
     vec3 crossVec = cross(normalize(vel.xyz), normalize(up.xyz));
-    vec3 pos = scale * (vPos.x*crossVec + vPos.y*vel.xyz) + boidPos.xyz;
+    vec3 pos = scale * (vPos.x*crossVec + vPos.y*normalize(vel.xyz)) + boidPos.xyz;
     gl_Position = projectionMat * modelViewMat * vec4(pos, 1.0);
 
-    vColor = normalize(vel.xyz);
+    vColor = vec4(vec3(length(vel.xyz)),1.0);
 }
