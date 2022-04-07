@@ -1,13 +1,15 @@
 #ifndef __BOIDSYSTEM_H__
 #define __BOIDSYSTEM_H__
 
+#include "sim_params.cuh"
+
 typedef unsigned int uint;
 enum DataArray { POSITION, VELOCITY, UPVECTOR, };
 
 class BoidSystem
 {
     public:
-        BoidSystem(uint numBoids);
+        BoidSystem(uint numBoids, uint3 gridSize);
         ~BoidSystem();
 
         void update(float deltaTime);
@@ -37,13 +39,28 @@ class BoidSystem
         float *m_hVel;
         float *m_hUp;
 
+        // GPU data
+        float *m_dSortedPos;
+        float *m_dSortedVel;
+        float *m_dSortedUp;
+
+        // Grid data for sorting method
+        uint *m_dGridParticleHash;   // grid hash value for each particle
+        uint *m_dGridParticleIndex;  // particle index for each particle
+        uint *m_dCellStart;          // index of start of each cell in sorted list
+        uint *m_dCellEnd;            // index of end of cell
+
+        // Buffer objects for OpenGL and CUDA
         uint m_posVBO;
         uint m_velVBO;
         uint m_upVBO;
-
         struct cudaGraphicsResource *m_cuda_posvbo_resource;
         struct cudaGraphicsResource *m_cuda_velvbo_resource;
         struct cudaGraphicsResource *m_cuda_upvbo_resource;
+
+        SimParams m_params;
+        uint3 m_gridSize;
+        uint m_numGridCells;
 };
 
 #endif  //__BOIDSYSTEM_H__

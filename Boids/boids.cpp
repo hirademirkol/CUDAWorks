@@ -9,14 +9,17 @@
 #include "renderer.h"
 #include "boidSystem.h"
 
-#define NUM_BOIDS 1000
+#define NUM_BOIDS 4096
+#define GRID_SIZE 64
 
+// Window parameters
 const uint width = 800, height = 600;
 
-// view params
+// Mouse parameters
 int ox, oy;
 int buttonState = 0;
 
+// View parameters
 float camera_trans[] = {0, 0, -4};
 float camera_rot[] = {0, 0, 0};
 float camera_trans_lag[] = {0, 0, -4};
@@ -26,6 +29,8 @@ const float inertia = 0.1f;
 float modelView[16];
 float projection[16];
 
+uint numBoids;
+uint3 gridSize;
 float timestep = 0.01f;
 
 BoidRenderer *boidRenderer = 0;
@@ -33,9 +38,9 @@ BoidSystem *bsystem = 0;
 
 extern "C" void cudaInit(int argc, char **argv);
 
-void initBoidSystem(int numBoids)
+void initBoidSystem(int numBoids, uint3 gridSize)
 {
-    bsystem = new BoidSystem(numBoids);
+    bsystem = new BoidSystem(numBoids, gridSize);
     bsystem->reset();
 
     boidRenderer = new BoidRenderer;
@@ -63,8 +68,10 @@ void initGL(int *argc, char **argv)
 
 void display()
 {
+    // Advance the simulation one step 
     bsystem->update(timestep);
 
+    // Transfer buffers to the renderer
     if(boidRenderer)
         boidRenderer->setBuffers(bsystem->getCurrentPositionBuffer(),
                                      bsystem->getCurrentVelocityBuffer(),
@@ -73,6 +80,7 @@ void display()
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    //Create ModelView matrix according to motion
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
@@ -94,6 +102,7 @@ void display()
 
     if(boidRenderer)
     {
+        // Transfer ModelView matrix to the renderer
         boidRenderer->setModelView(modelView);
         boidRenderer->display();
     }
@@ -104,6 +113,8 @@ void display()
 
 void reshape(int w, int h)
 {
+    // Recalculate ModelView and Projection matrices and transfer to the renderer
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(60.0, (float)w / (float)h, 0.1, 100.0);
@@ -127,7 +138,7 @@ void mouse(int button, int state, int x, int y)
     if (state == GLUT_DOWN) {
         if(button == 3 || button == 4 )
         {
-            int dir = 7 - 2*button;
+            int dir = 7 - 2*button; // Mouse buttons 3-4 correspond to scroll up and down
             camera_trans[2] += dir * 0.05f * fabs(camera_trans[2]);
         }
         else
@@ -181,10 +192,14 @@ int main(int argc, char **argv)
 {
     setenv("DIDSPLAY", ":0", 0);
 
+    numBoids = NUM_BOIDS;
+    uint gridDim = GRID_SIZE;
+    gridSize.x = gridSize.y = gridSize.z = gridDim;
+
     initGL(&argc, argv);
     cudaInit(argc, argv);
     
-    initBoidSystem(NUM_BOIDS);
+    initBoidSystem(numBoids, gridSize);
 
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
