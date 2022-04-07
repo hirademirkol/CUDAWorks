@@ -165,14 +165,14 @@ __global__ void reorderDataAndFindCellStart_kernel(
 }
 
 // Calculate avoidance effect of boid 2 to boid 1
-__device__ float3 calcAvoid(float3 pos, float3 pos2, uint* avoidAmount)
+__device__ float3 calcAvoid(float3 deltaPos, uint* avoidAmount)
 {
     float3 effect = make_float3(0.0f);
 
     // Calculate only if the boid 2 is in avoidance region
-    if(length(pos - pos2) < params.avoidLength)
+    if(length(deltaPos) < params.avoidLength)
     {
-        effect = pos - pos2;
+        effect = deltaPos;
         // Atomically add the boid to the number of avoided boids, as the reference is also used by other threads
         atomicAdd(avoidAmount, 1);
     }
@@ -181,14 +181,14 @@ __device__ float3 calcAvoid(float3 pos, float3 pos2, uint* avoidAmount)
 }
 
 // Calculate alignment effect of boid 2 to boid 1
-__device__ float3 calcAlign(float3 pos, float3 pos2, float3 vel, float3 vel2, uint* alignAmount)
+__device__ float3 calcAlign(float3 deltaPos, float3 deltaVel, uint* alignAmount)
 {
     float3 effect = make_float3(0.0f);
 
     // Calculate only if the boid 2 is in alignment region and out of avoidance region
-    if(length(pos - pos2) > params.avoidLength && length(pos - pos2) < params.alignLength)
+    if(length(deltaPos) > params.avoidLength && length(deltaPos) < params.alignLength)
     {
-        effect = vel2 - vel;
+        effect = -deltaVel;
         // Atomically add the boid to the number of aligned boids, as the reference is also used by other threads
         atomicAdd(alignAmount, 1);
     }
@@ -197,14 +197,14 @@ __device__ float3 calcAlign(float3 pos, float3 pos2, float3 vel, float3 vel2, ui
 }
 
 // Calculate cohesion effect of boid 2 to boid 1
-__device__ float3 calcCohesion(float3 pos, float3 pos2, uint* cohesionAmount)
+__device__ float3 calcCohesion(float3 deltaPos, uint* cohesionAmount)
 {
     float3 effect = make_float3(0.0f);
 
     // Calculate only if the boid 2 is in alignment region and out of avoidance region
-    if(length(pos - pos2) > params.avoidLength && length(pos - pos2) < params.alignLength)
+    if(length(deltaPos) > params.avoidLength && length(deltaPos) < params.alignLength)
     {
-        effect = pos2 - pos;
+        effect = -deltaPos;
         // Atomically add the boid to the number of coheisoned boids, as the reference is also used by other threads
         atomicAdd(cohesionAmount, 1);
     }
@@ -242,13 +242,19 @@ __device__ void interactWithCell(int3 gridPos, uint index, float3 pos, float3 ve
         {
             if(j != index) // Don't calculate for itself
             {
-                float3 pos2 = make_float3(oldPos[j]);
-                float3 vel2 = make_float3(oldVel[j]);
+                float3 deltaPos = pos - make_float3(oldPos[j]);
+                // Check whether boids are closer from the other side
+                if(deltaPos.x > 1.0f) deltaPos.x = 2.0f - deltaPos.x;
+                if(deltaPos.y > 1.0f) deltaPos.y = 2.0f - deltaPos.y;
+                if(deltaPos.z > 1.0f) deltaPos.z = 2.0f - deltaPos.z;
+
+                float3 deltaVel = vel - make_float3(oldVel[j]);
                 
+
                 // Calculate each effect of boid 2 and atomically add to the effect vector references
-                atomicAddv(avoidVel, calcAvoid(pos, pos2, avoidAmount));
-                atomicAddv(alignVel, calcAlign(pos, pos2, vel, vel2, alignAmount));
-                atomicAddv(cohesionVel, calcCohesion(pos, pos2, cohesionAmount));
+                atomicAddv(avoidVel, calcAvoid(deltaPos, avoidAmount));
+                atomicAddv(alignVel, calcAlign(deltaPos, deltaVel, alignAmount));
+                atomicAddv(cohesionVel, calcCohesion(deltaPos, cohesionAmount));
             }
         }
     }
