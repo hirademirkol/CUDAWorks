@@ -17,6 +17,9 @@ struct SimParams
     float avoidFactor;      // In range 0 to 1
     float alignFactor;      // In range 0 to 1
     float cohesionFactor;   // In range 0 to 1
+
+    float minSpeed;
+    float maxSpeed;
 };
 
 #endif //SIM_PARAMS_H

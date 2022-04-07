@@ -29,12 +29,15 @@ BoidSystem::BoidSystem(uint numBoids, uint3 gridSize)
                 m_params.gridSize = m_gridSize;
                 m_params.cellSize = make_float3(2.0f/m_gridSize.x, 2.0f/m_gridSize.y, 2.0f/m_gridSize.z);
 
-                m_params.avoidLength = 0.01f;
-                m_params.alignLength = 0.2f;
+                m_params.avoidLength = 0.02f;
+                m_params.alignLength = 0.1f;
 
-                m_params.avoidFactor = 0.6f;
+                m_params.avoidFactor = 0.9f;
                 m_params.alignFactor = 0.8f;
-                m_params.cohesionFactor = 0.05f;
+                m_params.cohesionFactor = 0.001f;
+
+                m_params.minSpeed = 10;
+                m_params.maxSpeed = 15;
                 _initialize();
             }
 
@@ -201,6 +204,7 @@ void BoidSystem::update(float deltaTime)
 void BoidSystem::reset()
 {
     int p = 0, v = 0, u = 0;
+    float speed = (m_params.maxSpeed + m_params.minSpeed)/2.0f;
 
     for (uint i = 0; i < m_numBoids; i++)
     {
@@ -220,9 +224,9 @@ void BoidSystem::reset()
         m_hPos[p++] = 2 * (pos[2] - 0.5f);
         m_hPos[p++] = 1.0f;
 
-        m_hVel[v++] = 2 * (vel[0] - 0.5f);
-        m_hVel[v++] = 2 * (vel[1] - 0.5f);
-        m_hVel[v++] = 2 * (vel[2] - 0.5f);
+        m_hVel[v++] = speed * (vel[0] - 0.5f);
+        m_hVel[v++] = speed * (vel[1] - 0.5f);
+        m_hVel[v++] = speed * (vel[2] - 0.5f);
         m_hVel[v++] = 0.0f;
 
         m_hUp[u++] = 0.0f;

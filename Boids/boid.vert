@@ -23,5 +23,5 @@ void main()
     fNormal = vec3(vPos, 1.0f);
     
     gl_Position = projectionMat * modelViewMat * vec4(fPos, 1.0);
-    fColor = vec4(fPos*0.5f + 0.5f, 1.0f);
+    fColor = vec4(abs(fPos), 1.0f);
 }
