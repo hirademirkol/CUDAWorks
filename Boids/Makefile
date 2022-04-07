@@ -1,33 +1,34 @@
 INCLUDES := -I ../inc
 LIBS := -lglut -lGL -lGLU
 DEBUG := -g -G
+BUILDDIR = bin
 #########################
 
 # Target Rules
-all: dir build
+all: $(BUILDDIR) build
 
-build: boids
+build: $(BUILDDIR)/boids
 
-boids: boids.o boidSystem.o boidSystem_cuda.o renderer.o
-	nvcc $(DEBUG) $(LIBS) bin/boids.o bin/boidSystem.o bin/boidSystem_cuda.o bin/renderer.o -o bin/boids
+$(BUILDDIR)/boids: $(BUILDDIR)/boids.o $(BUILDDIR)/boidSystem.o $(BUILDDIR)/boidSystem_cuda.o $(BUILDDIR)/renderer.o
+	nvcc $(DEBUG) $(LIBS) $(BUILDDIR)/boids.o $(BUILDDIR)/boidSystem.o $(BUILDDIR)/boidSystem_cuda.o $(BUILDDIR)/renderer.o -o $(BUILDDIR)/boids
 
-boids.o:boids.cpp
-	nvcc $(DEBUG) $(LIBS) boids.cpp $(INCLUDES) -o bin/boids.o -c
+$(BUILDDIR)/boids.o:boids.cpp
+	nvcc $(DEBUG) $(LIBS) boids.cpp $(INCLUDES) -o $(BUILDDIR)/boids.o -c
 
-boidSystem.o:boidSystem.cpp
-	nvcc $(DEBUG) $(LIBS) boidSystem.cpp $(INCLUDES) -o bin/boidSystem.o -c
+$(BUILDDIR)/boidSystem.o:boidSystem.cpp
+	nvcc $(DEBUG) $(LIBS) boidSystem.cpp $(INCLUDES) -o $(BUILDDIR)/boidSystem.o -c
 
-boidSystem_cuda.o:boidSystem_cuda.cu
-	nvcc $(DEBUG) $(LIBS) boidSystem_cuda.cu $(INCLUDES) -o bin/boidSystem_cuda.o -c
+$(BUILDDIR)/boidSystem_cuda.o:boidSystem_cuda.cu
+	nvcc $(DEBUG) $(LIBS) boidSystem_cuda.cu $(INCLUDES) -o $(BUILDDIR)/boidSystem_cuda.o -c
 
-renderer.o:renderer.cpp
-	nvcc $(DEBUG) $(LIBS) renderer.cpp $(INCLUDES) -o bin/renderer.o -c
+$(BUILDDIR)/renderer.o:renderer.cpp
+	nvcc $(DEBUG) $(LIBS) renderer.cpp $(INCLUDES) -o $(BUILDDIR)/renderer.o -c
 
-dir:
-	mkdir -p bin
+$(BUILDDIR):
+	mkdir -p $(BUILDDIR)
 
 run: build
-	bin/boids
+	$(BUILDDIR)/boids
 
 clean:
-	rm -f bin/boids
+	rm -fr $(BUILDDIR)
