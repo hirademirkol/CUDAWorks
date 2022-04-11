@@ -320,8 +320,8 @@ __global__ void interact_kernel(
     float speed = length(vel);
 
     //Wrap boids speed to speed limits
-    if(speed < minSpeed) vel = vel/speed * params.minSpeed;
-    if(speed > maxSpeed) vel = vel/speed * params.maxSpeed;
+    if(speed < params.minSpeed) vel = vel/speed * params.minSpeed;
+    if(speed > params.maxSpeed) vel = vel/speed * params.maxSpeed;
 
     // Project up vector to the plane with normal of next velocity value
     up -= dot(up, vel)/dot(vel,vel)*vel;

@@ -18,7 +18,7 @@ $(BUILDDIR)/boids.o:boids.cpp
 $(BUILDDIR)/boidSystem.o:boidSystem.cpp
 	nvcc $(DEBUG) $(LIBS) boidSystem.cpp $(INCLUDES) -o $(BUILDDIR)/boidSystem.o -c
 
-$(BUILDDIR)/boidSystem_cuda.o:boidSystem_cuda.cu
+$(BUILDDIR)/boidSystem_cuda.o:boidSystem_cuda.cu boidSystem_kernel.cuh
 	nvcc $(DEBUG) $(LIBS) boidSystem_cuda.cu $(INCLUDES) -o $(BUILDDIR)/boidSystem_cuda.o -c
 
 $(BUILDDIR)/renderer.o:renderer.cpp

@@ -33,11 +33,11 @@ BoidSystem::BoidSystem(uint numBoids, uint3 gridSize)
                 m_params.alignLength = 0.1f;
 
                 m_params.avoidFactor = 0.9f;
-                m_params.alignFactor = 0.8f;
+                m_params.alignFactor = 0.9f;
                 m_params.cohesionFactor = 0.001f;
 
-                m_params.minSpeed = 10;
-                m_params.maxSpeed = 15;
+                m_params.minSpeed = 1;
+                m_params.maxSpeed = 5;
                 _initialize();
             }
 
