@@ -10,5 +10,5 @@ Developed and tried on Ubuntu 20.04, with CUDA Toolkit 11.5.
 - Avoiding external objects
 - Better shading
 
-https://user-images.githubusercontent.com/18901597/162280372-cf05216b-b38c-4b89-b88d-e38c36d70922.mp4
+https://user-images.githubusercontent.com/18901597/162808095-ddcd04e8-0a79-4fe4-8382-3e84f9e5d449.mp4
 
