@@ -1,10 +1,9 @@
 #include <stdlib.h>
 #include <algorithm>
 
-#include <GL/freeglut.h>
-
 #include <math.h>
 #include <helper_gl.h>
+#include <GL/freeglut.h>
 
 #include "renderer.h"
 #include "boidSystem.h"
@@ -190,7 +189,9 @@ void close()
 
 int main(int argc, char **argv) 
 {
-    setenv("DIDSPLAY", ":0", 0);
+#ifdef linux
+    setenv("DISPLAY", ":0", 0);
+#endif
 
     numBoids = NUM_BOIDS;
     uint gridDim = GRID_SIZE;

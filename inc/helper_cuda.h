@@ -40,6 +40,10 @@
 
 #include <helper_string.h>
 
+#include <driver_types.h>
+#include <cuda_runtime_api.h>
+#include <cuda_runtime.h>
+
 #ifndef EXIT_WAIVED
 #define EXIT_WAIVED 2
 #endif
