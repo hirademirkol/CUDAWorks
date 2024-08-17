@@ -1,3 +1,4 @@
+#include <helper_gl.h>
 #include <helper_cuda.h>
 
 #include <cuda_gl_interop.h>

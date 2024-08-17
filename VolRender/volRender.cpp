@@ -1,15 +1,15 @@
-//OpenGL
-#include <GL/freeglut.h>
+//Helpers from NVIDIA Samples
+#include "helper_gl.h"
+#include "helper_cuda.h"
+#include "helper_math.h"
 
 //CUDA
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 #include <vector_types.h>
 
-//Helpers from NVIDIA Samples
-#include "helper_gl.h"
-#include "helper_cuda.h"
-#include "helper_math.h"
+//OpenGL
+#include <GL/glut.h>
 
 int *pArgc;
 char **pArgv;
@@ -250,7 +250,9 @@ int main(int argc, char **argv)
     pArgc = &argc;
     pArgv = argv;
 
+#ifdef __linux__
     setenv("DISPLAY", ":0", 0);
+#endif
 
     initGL(&argc, argv);
     findCudaDevice(argc, (const char**)argv);

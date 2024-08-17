@@ -31,9 +31,7 @@
 
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     #include <GL/glew.h>
-#endif
-
-#if defined(__APPLE__) || defined(MACOSX)
+#elif defined(__APPLE__) || defined(MACOSX)
     #include <OpenGL/gl.h>
 #else
     #include <GL/gl.h>
