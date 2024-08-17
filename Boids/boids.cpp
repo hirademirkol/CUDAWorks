@@ -189,7 +189,7 @@ void close()
 
 int main(int argc, char **argv) 
 {
-#ifdef linux
+#ifdef __linux__
     setenv("DISPLAY", ":0", 0);
 #endif
 

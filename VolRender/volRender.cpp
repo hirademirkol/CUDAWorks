@@ -250,7 +250,7 @@ int main(int argc, char **argv)
     pArgc = &argc;
     pArgv = argv;
 
-#ifdef linux
+#ifdef __linux__
     setenv("DISPLAY", ":0", 0);
 #endif
 
