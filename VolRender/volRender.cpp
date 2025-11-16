@@ -9,7 +9,7 @@
 #include <vector_types.h>
 
 //OpenGL
-#include <GL/glut.h>
+#include <GL/freeglut.h>
 
 int *pArgc;
 char **pArgv;
